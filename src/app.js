@@ -1,11 +1,14 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 const app = express();
 
 //basic configurations
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb" }));
 app.use(express.static("public"));
+
+app.use(cookieParser()); // for cookie
 
 //cors configurations
 app.use(
