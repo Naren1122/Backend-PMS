@@ -1,0 +1,136 @@
+Task Management Logic Overview
+1. Task Model Structure
+The task model includes:
+
+Basic fields: project (reference), title (required, 3-100 chars), description (optional, max 500 chars)
+Assignment fields: assignedTo (reference to User), createdBy (reference to User)
+Status field: Enum with values 'todo', 'in_progress', 'done' (using TaskStatusEnum)
+Priority field: Enum with values 'low', 'medium', 'high' (default 'medium')
+Due date: Optional date field
+Attachments: Array of objects with file metadata (url, name, mimeType, size, uploadedBy, uploadedAt)
+Timestamps: createdAt, updatedAt
+2. Task Creation (POST /api/v1/tasks/:projectId)
+Access: Admin, Project Admin
+
+Logic Flow:
+
+Verify JWT authentication (get user from req.user)
+Validate user is a member of the project
+Check user role is Admin or Project Admin
+Validate input:
+title: required, 3-100 characters
+description: optional, max 500 characters
+assignedTo: optional, must be a project member if provided
+priority: optional, default 'medium' (low/medium/high)
+dueDate: optional, must be valid date
+If assignedTo provided:
+Find user by ID
+Verify user is a project member
+Create task document with all fields
+Populate task fields (assignedTo, createdBy with username, email)
+Return created task
+3. Task Listing (GET /api/v1/tasks/:projectId)
+Access: All project members
+
+Logic Flow:
+
+Verify JWT authentication
+Validate user is a member of the project
+Build query object with project ID
+Apply filters (if provided in query params):
+status: filter by task status
+assignedTo: filter by assignee user ID
+priority: filter by priority level
+Determine sort order (sortBy and sortOrder query params)
+Fetch tasks with populated fields
+Return tasks array
+4. Task Details (GET /api/v1/tasks/:projectId/t/:taskId)
+Access: All project members
+
+Logic Flow:
+
+Verify JWT authentication
+Find task by taskId
+Validate task belongs to the project
+Validate user is a member of the project
+Populate all fields (assignedTo, createdBy, attachments.uploadedBy)
+Return task details
+5. Task Updates (PUT /api/v1/tasks/:projectId/t/:taskId)
+Access:
+
+Admin/Project Admin: Can update all fields
+Task Assignee: Can only update status
+Logic Flow:
+
+Verify JWT authentication
+Find task by taskId
+Validate task belongs to the project
+Check user permissions (isAdmin, isProjectAdmin, isAssignee)
+Validate and update fields based on permissions:
+For Admin/Project Admin: title, description, assignedTo, priority, dueDate
+For Assignee: status only
+Status validation:
+Must be one of the TaskStatusEnum values
+Assignee can only move forward: todo → in_progress → done
+Admin/Project Admin can change in any direction
+If status changes to 'done': set completedBy and completedAt
+Save task
+Return updated task with populated fields
+6. Task Deletion (DELETE /api/v1/tasks/:projectId/t/:taskId)
+Access: Admin, Project Admin
+
+Logic Flow:
+
+Verify JWT authentication
+Find task by taskId
+Validate task belongs to the project
+Check user is Admin or Project Admin
+Delete associated files from filesystem (if any attachments)
+Delete task from database
+Return success response
+7. File Attachments
+Upload Attachment (POST /api/v1/tasks/:projectId/t/:taskId/attachments)
+Access: Admin, Project Admin, Task Assignee
+
+Logic Flow:
+
+Verify JWT authentication
+Find task by taskId
+Validate task belongs to the project
+Check user permissions
+Validate file (size max 10MB, type check)
+Upload file to public/images directory
+Create attachment object with metadata
+Add to task.attachments array
+Save task
+Return updated task
+Delete Attachment (DELETE /api/v1/tasks/:projectId/t/:taskId/attachments/:attachmentId)
+Access: Admin, Project Admin, File Uploader
+
+Logic Flow:
+
+Verify JWT authentication
+Find task by taskId
+Find attachment in task.attachments array
+Check user permissions
+Delete file from filesystem
+Remove attachment from task.attachments array
+Save task
+Return updated task
+8. Task Assignment
+Logic Flow (part of Task Update):
+
+When updating a task, if assignedTo is provided:
+Find the user by ID
+Check if user is a project member
+Update task.assignedTo field
+9. Three-State Status System
+Status Values:
+
+todo: Task not started
+in_progress: Task currently being worked on
+done: Task completed
+Status Transition Rules:
+
+For Admin/Project Admin: Can change status in any direction
+For Assignee: Can only move forward (todo → in_progress → done)

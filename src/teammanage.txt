@@ -1,0 +1,116 @@
+Team Member Management Logic
+1. Add Project Member Logic
+Function: addProjectMember
+
+Input Parameters:
+
+projectId (from URL params)
+email (from request body)
+role (optional, from request body)
+Steps:
+
+Validate that email is provided in the request body
+Find the project by projectId
+Check if project exists, throw 404 error if not
+Verify that the current user (from req.user._id) is the project owner
+Find the user to add by their email address
+Check if the user exists in the database, throw 404 if not
+Check if the user is already a member of the project
+If role is provided, validate it against UserRolesEnum (admin, project_admin, member)
+If no role provided, default to MEMBER role
+Add the new member to the project's members array with:
+user: user._id
+role: validated role
+joinedAt: current timestamp
+Save the project
+Return the updated project with populated user data
+Error Cases:
+
+Email not provided: 400 error
+Project not found: 404 error
+User not authorized: 403 error
+User to add not found: 404 error
+User already a member: 400 error
+Invalid role: 400 error
+2. Get Project Members Logic
+Function: getProjectMembers
+
+Input Parameters:
+
+projectId (from URL params)
+Steps:
+
+Find the project by projectId
+Check if project exists, throw 404 error if not
+Verify that the current user is a member of the project
+Return the project's members array with populated user data
+Error Cases:
+
+Project not found: 404 error
+User not a member: 403 error
+3. Update Member Role Logic
+Function: updateMemberRole
+
+Input Parameters:
+
+projectId (from URL params)
+userId (from URL params)
+role (from request body)
+Steps:
+
+Validate that role is provided in the request body
+Validate the role against UserRolesEnum
+Find the project by projectId
+Check if project exists, throw 404 error if not
+Verify that the current user is the project owner
+Find the member in the project's members array by userId
+Check if member exists, throw 404 if not
+Prevent the owner from changing their own role
+Update the member's role in the members array
+Save the project
+Return the updated project with populated user data
+Error Cases:
+
+Role not provided: 400 error
+Invalid role: 400 error
+Project not found: 404 error
+User not authorized: 403 error
+Member not found: 404 error
+Attempting to change owner's role: 400 error
+4. Remove Project Member Logic
+Function: removeProjectMember
+
+Input Parameters:
+
+projectId (from URL params)
+userId (from URL params)
+Steps:
+
+Find the project by projectId
+Check if project exists, throw 404 error if not
+Verify that the current user is the project owner
+Find the member in the project's members array by userId
+Check if member exists, throw 404 if not
+Prevent the owner from removing themselves
+Remove the member from the project's members array
+Save the project
+Return the updated project with populated user data
+Error Cases:
+
+Project not found: 404 error
+User not authorized: 403 error
+Member not found: 404 error
+Attempting to remove owner: 400 error
+Common Patterns Across All Functions:
+Authentication: All functions assume JWT authentication is already verified by middleware
+Authorization: Admin-only operations check if current user is project owner
+Data Population: All functions return populated user data (username, email)
+Error Handling: Consistent error responses with appropriate status codes
+Logging: Detailed console logging for debugging and tracking operations
+Route Structure:
+All member management routes should be mounted under /api/v1/projects:
+
+POST /:projectId/members - Add member
+GET /:projectId/members - Get all members
+PUT /:projectId/members/:userId - Update member role
+DELETE /:projectId/members/:userId - Remove member

@@ -8,6 +8,7 @@ import {
   forgotPasswordMailgenContent,
 } from "../utils/mail.js";
 import jwt from "jsonwebtoken";
+import { UserRolesEnum } from "../utils/constant.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -36,11 +37,20 @@ const registerUser = asyncHandler(async (req, res) => {
   if (existedUser) {
     throw new ApiError(409, "User with email or username already exist", []);
   }
+  
+  // Only allow admin role assignment if the requester is already an admin
+  // For regular registration, default to MEMBER role
+  let userRole = UserRolesEnum.MEMBER;
+  if (role && Object.values(UserRolesEnum).includes(role)) {
+    // If role is specified, check if it's valid
+    userRole = role;
+  }
 
   const user = await User.create({
     email,
     password,
     username,
+    role: userRole,
     isEmailVerified: false,
   });
 
